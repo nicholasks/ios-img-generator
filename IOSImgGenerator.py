@@ -1,11 +1,13 @@
 import cairosvg
 import json
 import os
+
 from multiprocessing.pool import ThreadPool
 from os.path import splitext, join
 from PIL import Image
+from VectorDrawable2Svg import convertVd
 
-INPUT_FORMATS = ['svg', 'png', 'jpg']
+INPUT_FORMATS = ['svg', 'png', 'jpg', 'xml']
 EXT_OUT = '.png'
 OUTPUT_BASE = 'output'
 THREADS = 4
@@ -20,11 +22,15 @@ def saveResults(files, results):
     result_dict = dict()
     result_dict['results'] = dict()
     i = 0
+    err = 0
     for file in files:
         result_dict['results'][file] = results[i]
+        if type(results[i]) is not tuple:
+            err += 1
         i += 1
 
-    result_dict["total_processed"] = i
+    result_dict['total_processed'] = i
+    result_dict['total_errors'] = err
 
     with open("results.txt", 'w') as file_results:
         file_results.write(
@@ -56,6 +62,15 @@ def create_multiple_sizes(file_name):
     os.makedirs(IMG_BASE_DIR)
     pdf_generated = False
     img_pdf_path = join(IMG_BASE_DIR, name + '_Global.pdf')
+
+    if ext == '.xml':
+        try:
+            convertVd(file_name)
+        except Exception as ex:
+            return "Error during conversion to svg, {0}".format(str(ex))
+        convertVd(file_name)
+        cairosvg.svg2png(url=name + '.xml.svg', write_to=name + '.png')
+        file_name = name + '.png'
 
     if ext == '.svg':
         cairosvg.svg2png(url=file_name, write_to=name + '.png')
